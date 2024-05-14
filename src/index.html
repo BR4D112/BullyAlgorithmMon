@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>WebSocket Test</title>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+
+<body>
+    <script src="https://cdn.socket.io/socket.io-4.0.1.min.js"></script>
+    <div class="column-container">
+        <div class="column-left">
+            <p class="wide-letters">M O N I T O R</p>
+            <!--<p class="hora">16:20:00</p>
+            <p class="time-label">hh : mm : ss</p>-->
+            <table id="servers">
+                <tr>
+                    <th>ID</th>
+                    <th>Port</th>
+                    <th>Status</th>
+                    <th>Leader</th>
+                    <th>Action</th>
+                </tr>
+                <!-- Rows will be added here dynamically -->
+            </table>
+            <button id="sendDate" >Berkeley</button>
+            <div class="input-container">
+                <input type="text" id="serverId" placeholder="Enter server ID">
+                <button id="addServer">Agregar Servidor</button>
+            </div>
+        </div>
+        <div class="column-right">
+            <div class="log-console">
+                <p class="log-bottom-text">$ c l i e n t _ l o g > _</p>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('sendDate').style.display = 'none';
+        // Connect to the WebSocket server
+        const socket = new WebSocket('ws://localhost:8999');
+
+        const logList = document.getElementById('log-list');
+
+        // Escuchar mensajes de log desde el servidor
+        /*
+        socket.on('log', function (message) {
+            const logConsole = document.querySelector('.log-console');
+            const p = document.createElement('p');
+            p.classList.add('console-text');
+            p.textContent = `[${getFormattedDate()}] ${message.data}`;
+            logConsole.appendChild(p);
+        });
+        */
+        // Listen for messages
+        socket.addEventListener('message', (event) => {
+            console.log('Message from server: ', event.data);
+
+            // Add the message to the log console
+            const logConsole = document.querySelector('.log-console');
+            const p = document.createElement('p');
+            p.classList.add('console-text');
+            p.textContent = `[${getFormattedDate()}] ${event.data}`;
+            logConsole.appendChild(p);
+
+            function getFormattedDate() {
+                const now = new Date();
+                return `[${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}]`;
+            }
+
+            // Update the server list
+            const servers = JSON.parse(event.data);
+            const table = document.getElementById('servers');
+
+            // Add each server to the list
+            for (let server of servers) {
+                const id = `${server.ip}:${server.port}`;
+
+                let row = document.getElementById(id);
+                if (!row) {
+                    row = table.insertRow();
+                    row.id = id;
+                    row.insertCell().textContent = server.id;
+                    row.insertCell().textContent = server.port;
+                    row.insertCell();
+                    row.insertCell();
+                    const actionCell = row.insertCell(); // New cell for action button
+                    const stopButton = document.createElement('button');
+                    stopButton.textContent = 'Detener';
+
+                    stopButton.style.backgroundColor = '#1a1a1a'; // Set the background color
+                    stopButton.style.color = '#fff'; // Set the text color
+                    stopButton.style.border = 'none'; // Remove the border
+                    stopButton.style.padding = '10px 20px'; // Add some padding
+                    stopButton.style.cursor = 'pointer'; // Change the cursor to a pointer
+                    stopButton.style.textAlign = 'center'; // Center the text
+                    stopButton.style.display = 'inline-block'; // Make the button inline-block
+                    stopButton.style.width = '49%'; // Set the width of the button
+
+                    stopButton.addEventListener('mouseover', function () {
+                        stopButton.style.backgroundColor = '#242424'; // Change the background color when mouse is over
+                    });
+
+                    stopButton.addEventListener('mouseout', function () {
+                        stopButton.style.backgroundColor = '#1a1a1a'; // Change the background color back when mouse is out
+                    });
+                    stopButton.addEventListener('click', function () {
+                        fetch('http://localhost:8999/stopServer', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ port: server.port }),
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                console.log('Server stopped:', data);
+                            });
+                    });
+                    actionCell.appendChild(stopButton);
+                }
+
+                const statusCell = row.cells[2];
+                statusCell.innerHTML = server.active ? '<img src="../utils/green.png" alt="True">' : '<img src="../utils/red.png" alt="False">';
+
+                const leadStatusCell = row.cells[3]; // New cell for leadStatus
+                leadStatusCell.innerHTML = server.leadStatus ? '<img src="../utils/crown.png" alt="True">' : '';
+            }
+        });
+
+        // Send date when button is clicked
+        document.getElementById('sendDate').addEventListener('click', () => {
+            fetch('http://localhost:8999/timeReq', {
+                method: 'POST',
+            });
+        });
+
+        document.getElementById('addServer').addEventListener('click', function () {
+            const serverId = document.getElementById('serverId').value;
+            fetch('http://localhost:8999/createServer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: serverId }),
+            })
+                .then(response => response.json())
+                .then(newServer => {
+                    console.log('New server created:', newServer);
+                });
+        });
+    </script>
+</body>
+
+</html>
