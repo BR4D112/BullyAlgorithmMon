@@ -55,14 +55,16 @@ function updateServerDifferences() {
 
 function createServer(id) {
     lastPort += 1; // Incrementar el puerto
-    const ip = '192.168.128.4'; // IP inicial
+    const ip = '10.4.75.24'; // IP inicial
     const newServer = { ip: ip, id: id, port: lastPort, active: false, leadStatus: false };
     servers.push(newServer);
 
     const scriptPath = path.join(__dirname, 'serverCreator.sh');
 
-    // Ejecutar el script con ip y port como parámetros
-    exec(`${scriptPath} ${lastPort}`, (error, stdout, stderr) => {
+    const knownPorts = servers.map(server => server.port).join(','); //listar los puertos hasta ahora conocidos
+
+    // Ejecutar el script con ip, port y lista de puertos como parámetros
+    exec(`${scriptPath} ${lastPort} ${id} ${knownPorts}`, (error, stdout, stderr) => {
         if (error) {
             console.error(`Error al ejecutar el script: ${error}`);
             return;
@@ -97,7 +99,27 @@ app.post('/createServer', (req, res) => {
 });
 
 app.post('/stopServer', (req, res) => {
-    res.json(req.body.port);
+    const ip = req.body.ip;
+    const port = req.body.port;
+
+    // Find the server with the specified ip and port
+    const server = servers.find(server => server.ip === ip && server.port === port);
+    if (!server) {
+        res.status(404).json({ message: 'Server not found' });
+        return;
+    }
+
+    const scriptPath = path.join(__dirname, 'serverKiller.sh');
+
+    exec(`${scriptPath} ${ip} ${port}`, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error stopping container: ${error}`);
+            res.status(500).json({ message: 'Error stopping server' });
+            return;
+        }
+        console.log(`Container stopped: ${stdout}`);
+        res.json({ message: 'Server stopped successfully' });
+    });
 });
 
 app.post('/timeReq', (req, res) => {
@@ -144,6 +166,13 @@ app.post('/leadStatus', (req, res) => {
     // Convert port to a number
     const portNumber = parseInt(port, 10);
     console.log(portNumber);
+
+    // If a new leader is being assigned, ensure there is only one leader
+    if (leadStatus) {
+        servers.forEach(server => {
+            server.leadStatus = false;
+        });
+    }
 
     // Find the server with the specified port
     const server = servers.find(server => server.port === portNumber);
