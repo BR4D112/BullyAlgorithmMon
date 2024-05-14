@@ -72,7 +72,8 @@ function createServer(id) {
         console.error(`Errores del script: ${stderr}`);
     });
     console.log(servers);    
-
+    currentLeng = false;
+    hasChange["messageToprint"] = "Creamos un servidor";
     return newServer;
 }
 
@@ -169,8 +170,8 @@ function getFormattedDate() {
 function sendLog(messageIn){
     wss.on("connection", (ws)=>{
         ws.on('message', ()=>{
-            ws.send(`received: ${messageIn}`);
         })
+        ws.send(`received: ${messageIn}`);
     })
 }
 
@@ -186,20 +187,25 @@ function checkServerConnection(server) {
         });
     });
 }
+let currentLeng = true;
+
+const hasChange = {isNewCheck: true,
+    messageToprint : "hay nuevos servidores"
+    };
 
 wss.on('connection', (ws) => {
     ws.on('message', (message) => {
         console.log('received: %s', message);
-        ws.send(`received: ${message}`);
     });
-
+    //ws.send(new Date())
     // Verificar la conexión con los servidores cada segundo
     setInterval(async () => {
         for (let server of servers) {
             server.active = await checkServerConnection(server);
         }
-
-        ws.send(JSON.stringify(servers));
+        const toSend = currentLeng?JSON.stringify(servers):JSON.stringify(hasChange);
+        ws.send(toSend);
+        currentLeng = true;
     }, 1000);
 });
 

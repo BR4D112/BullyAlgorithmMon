@@ -7,7 +7,7 @@
 </head>
 
 <body>
-    <script src="https://cdn.socket.io/socket.io-4.0.1.min.js"></script>
+    <!--<script src="https://cdn.socket.io/socket.io-4.0.1.min.js"></script>-->
     <div class="column-container">
         <div class="column-left">
             <p class="wide-letters">M O N I T O R</p>
@@ -36,43 +36,60 @@
         </div>
     </div>
     <script>
-        document.getElementById('sendDate').style.display = 'none';
-        // Connect to the WebSocket server
-        const socket = new WebSocket('ws://localhost:8999');
-
-        const logList = document.getElementById('log-list');
-
-        // Escuchar mensajes de log desde el servidor
-        /*
-        socket.on('log', function (message) {
+        function addTextToConsolePane(message) {
             const logConsole = document.querySelector('.log-console');
             const p = document.createElement('p');
             p.classList.add('console-text');
-            p.textContent = `[${getFormattedDate()}] ${message.data}`;
+            p.textContent = `[${message}]`;
             logConsole.appendChild(p);
-        });
-        */
+        }
+        document.getElementById('sendDate').style.display = 'none';
+        // Connect to the WebSocket server
+        let socket;
+        try {
+            socket = new WebSocket('ws://localhost:8999');
+            let message = socket.OPEN?` conexion lograda con server 8999`: `conexion fallida`;
+                addTextToConsolePane(message);
+        } catch (error) {
+            addTextToConsolePane(`server of monitor is off`);        
+        }
+        const logList = document.getElementById('log-list');
+        const isEmpty = true;
         // Listen for messages
+        function getFormattedDate() {
+                const now = new Date();
+                return `[${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}]`;
+        }
         socket.addEventListener('message', (event) => {
             console.log('Message from server: ', event.data);
 
             // Add the message to the log console
-            const logConsole = document.querySelector('.log-console');
+            /*const logConsole = document.querySelector('.log-console');
             const p = document.createElement('p');
             p.classList.add('console-text');
             p.textContent = `[${getFormattedDate()}] ${event.data}`;
-            logConsole.appendChild(p);
-
-            function getFormattedDate() {
-                const now = new Date();
-                return `[${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}]`;
-            }
+            logConsole.appendChild(p);*/
+            //addTextToConsolePane(`[${getFormattedDate()}] ${event.data}`);
+            
 
             // Update the server list
-            const servers = JSON.parse(event.data);
-            const table = document.getElementById('servers');
-
+            try {
+                const servers = JSON.parse(event.data);
+                if(servers.hasOwnProperty('isNewCheck')) {
+                    addTextToConsolePane(servers["messageToprint"]);
+                }
+                else updateTable(servers);
+            } catch (error) {
+                addTextToConsolePane(`[${getFormattedDate()}]hubo un error: `+ error );
+                console.log(error);
+                const servers =[];
+            } 
+            
             // Add each server to the list
+            
+        });
+        function updateTable(servers) {
+            const table = document.getElementById('servers');
             for (let server of servers) {
                 const id = `${server.ip}:${server.port}`;
 
@@ -126,12 +143,13 @@
                 const leadStatusCell = row.cells[3]; // New cell for leadStatus
                 leadStatusCell.innerHTML = server.leadStatus ? '<img src="../utils/crown.png" alt="True">' : '';
             }
-        });
-
+        }
         // Send date when button is clicked
         document.getElementById('sendDate').addEventListener('click', () => {
             fetch('http://localhost:8999/timeReq', {
                 method: 'POST',
+            }).catch((e)=>{
+            addTextToConsolePane(`[${getFormattedDate()}] no envio bien los datos`);
             });
         });
 
@@ -146,7 +164,7 @@
             })
                 .then(response => response.json())
                 .then(newServer => {
-                    console.log('New server created:', newServer);
+                    addTextToConsolePane(`[${getFormattedDate()}] Nuevo servidor creado`);
                 });
         });
     </script>
