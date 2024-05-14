@@ -63,7 +63,7 @@ function createServer(id) {
     const scriptPath = path.join(__dirname, 'serverCreator.sh');
 
     // Ejecutar el script con ip y port como parámetros
-    exec(`${scriptPath} ${lastPort}`, (error, stdout, stderr) => {
+    exec(`${scriptPath} ${lastPort} ${id}`, (error, stdout, stderr) => {
         if (error) {
             console.error(`Error al ejecutar el script: ${error}`);
             return;
