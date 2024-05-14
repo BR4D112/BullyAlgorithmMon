@@ -98,7 +98,27 @@ app.post('/createServer', (req, res) => {
 });
 
 app.post('/stopServer', (req, res) => {
-    res.json(req.body.port);
+    const ip = req.body.ip;
+    const port = req.body.port;
+
+    // Find the server with the specified ip and port
+    const server = servers.find(server => server.ip === ip && server.port === port);
+    if (!server) {
+        res.status(404).json({ message: 'Server not found' });
+        return;
+    }
+
+    const scriptPath = path.join(__dirname, 'serverKiller.sh');
+
+    exec(`${scriptPath} ${ip} ${port}`, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error stopping container: ${error}`);
+            res.status(500).json({ message: 'Error stopping server' });
+            return;
+        }
+        console.log(`Container stopped: ${stdout}`);
+        res.json({ message: 'Server stopped successfully' });
+    });
 });
 
 

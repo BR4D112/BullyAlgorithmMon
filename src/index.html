@@ -110,7 +110,7 @@
                             headers: {
                                 'Content-Type': 'application/json',
                             },
-                            body: JSON.stringify({ port: server.port }),
+                            body: JSON.stringify({ ip: server.ip, port: server.port }),
                         })
                             .then(response => response.json())
                             .then(data => {
