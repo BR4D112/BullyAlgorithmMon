@@ -23,7 +23,7 @@
                 </tr>
                 <!-- Rows will be added here dynamically -->
             </table>
-            <button id="sendDate" >Berkeley</button>
+            <button id="sendDate">Berkeley</button>
             <div class="input-container">
                 <input type="text" id="serverId" placeholder="Enter server ID">
                 <button id="addServer">Agregar Servidor</button>
@@ -40,7 +40,7 @@
             const logConsole = document.querySelector('.log-console');
             const p = document.createElement('p');
             p.classList.add('console-text');
-            p.textContent = `[${message}]`;
+            p.textContent = `<${message}>`;
             logConsole.appendChild(p);
         }
         document.getElementById('sendDate').style.display = 'none';
@@ -48,17 +48,31 @@
         let socket;
         try {
             socket = new WebSocket('ws://localhost:8999');
-            let message = socket.OPEN?` conexion lograda con server 8999`: `conexion fallida`;
-                addTextToConsolePane(message);
+            socket.onopen = function () {
+                let message = "Conexión lograda con el servidor en el puerto 8999";
+                addTextToConsolePane(getFormattedDate() + "\n" + message);
+            };
+
+            // Evento para cuando hay un error en la conexión
+            socket.onerror = function (error) {
+                let message = "Conexión fallida";
+                addTextToConsolePane(getFormattedDate() + "\n" + message);
+            };
+
+            // Evento para cuando la conexión se cierra
+            socket.onclose = function (event) {
+                let message = "La conexión ha sido cerrada";
+                addTextToConsolePane(getFormattedDate() + "\n" + message);
+            };
         } catch (error) {
-            addTextToConsolePane(`server of monitor is off`);        
+            addTextToConsolePane(`server of monitor is off`);
         }
         const logList = document.getElementById('log-list');
         const isEmpty = true;
         // Listen for messages
         function getFormattedDate() {
-                const now = new Date();
-                return `[${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}]`;
+            const now = new Date();
+            return `[${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}]`;
         }
         socket.addEventListener('message', (event) => {
             console.log('Message from server: ', event.data);
@@ -70,23 +84,23 @@
             p.textContent = `[${getFormattedDate()}] ${event.data}`;
             logConsole.appendChild(p);*/
             //addTextToConsolePane(`[${getFormattedDate()}] ${event.data}`);
-            
+
 
             // Update the server list
             try {
                 const servers = JSON.parse(event.data);
-                if(servers.hasOwnProperty('isNewCheck')) {
+                if (servers.hasOwnProperty('isNewCheck')) {
                     addTextToConsolePane(servers["messageToprint"]);
                 }
                 else updateTable(servers);
             } catch (error) {
-                addTextToConsolePane(`[${getFormattedDate()}]hubo un error: `+ error );
+                addTextToConsolePane(`[${getFormattedDate()}]hubo un error: ` + error);
                 console.log(error);
-                const servers =[];
-            } 
-            
+                const servers = [];
+            }
+
             // Add each server to the list
-            
+
         });
         function updateTable(servers) {
             const table = document.getElementById('servers');
@@ -148,8 +162,8 @@
         document.getElementById('sendDate').addEventListener('click', () => {
             fetch('http://localhost:8999/timeReq', {
                 method: 'POST',
-            }).catch((e)=>{
-            addTextToConsolePane(`[${getFormattedDate()}] no envio bien los datos`);
+            }).catch((e) => {
+                addTextToConsolePane(`[${getFormattedDate()}] no envio bien los datos`);
             });
         });
 
