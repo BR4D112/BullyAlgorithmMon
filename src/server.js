@@ -1,5 +1,4 @@
 const express = require('express');
-//const path = require('path');
 const cors = require('cors');
 const { exec } = require('child_process');
 const http = require('http');
@@ -19,7 +18,7 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 let lastPort = 5123; // Puerto inicial crear server
-
+let websocketSend;
 
 const servers = [
     //{ ip: '192.168.128.4', port: 5001, active: false, difference: 0 },
@@ -32,7 +31,7 @@ let average = 0;
 function updateServerDifferences() {
     let sum = 0;
     let count = 0;
-     // Calculate the sum of differences and the count of active servers
+    // Calculate the sum of differences and the count of active servers
     servers.forEach(server => {
         if (server.active) {
             sum += server.difference;
@@ -71,7 +70,7 @@ function createServer(id) {
         console.log(`Salida del script: ${stdout}`);
         console.error(`Errores del script: ${stderr}`);
     });
-    console.log(servers);    
+    console.log(servers);
     currentLeng = false;
     hasChange["messageToprint"] = "Creamos un servidor";
     return newServer;
@@ -88,7 +87,6 @@ function logServerNumbers() {
     }
 
     console.log(logMessage);
-    sendLog(logMessage);
 }
 
 let firstTime;
@@ -102,8 +100,6 @@ app.post('/stopServer', (req, res) => {
     res.json(req.body.port);
 });
 
-
-
 app.post('/timeReq', (req, res) => {
     const date = new Date().toISOString();
 
@@ -112,29 +108,29 @@ app.post('/timeReq', (req, res) => {
             axios.get(`http://${server.ip}:${server.port}/getdiff`, {
                 data: { date: date }
             })
-            .then(function (response) {
-                server.difference = parseInt(response.data.difference);
-                console.log(date);
-                console.log(response.data);
-                console.log(server.difference);
-
-                updateServerDifferences();
-
-                // Send the updated difference to the Python server
-                axios.post(`http://${server.ip}:${server.port}/update-diff`, {
-                    difference: server.difference
-                })
                 .then(function (response) {
-                    console.log('Difference updated successfully');
-                    sendLog(`LOG [${date}] ${server.ip} has new difference update`);
+                    server.difference = parseInt(response.data.difference);
+                    console.log(date);
+                    console.log(response.data);
+                    console.log(server.difference);
+
+                    updateServerDifferences();
+
+                    // Send the updated difference to the Python server
+                    axios.post(`http://${server.ip}:${server.port}/update-diff`, {
+                        difference: server.difference
+                    })
+                        .then(function (response) {
+                            console.log('Difference updated successfully');
+                            sendLog(`LOG [${date}] ${server.ip} has new difference update`);
+                        })
+                        .catch(function (error) {
+                            console.log('Failed to update difference: ', error);
+                        });
                 })
                 .catch(function (error) {
-                    console.log('Failed to update difference: ', error);
+                    console.log(error);
                 });
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
         }
     });
 
@@ -167,9 +163,9 @@ function getFormattedDate() {
         date: `${now.toISOString()}`
     }
 }
-function sendLog(messageIn){
-    wss.on("connection", (ws)=>{
-        ws.on('message', ()=>{
+function sendLog(messageIn) {
+    wss.on("connection", (ws) => {
+        ws.on('message', () => {
         })
         ws.send(`received: ${messageIn}`);
     })
@@ -181,7 +177,6 @@ function checkServerConnection(server) {
             resolve(true);
             socket.end();
         });
-
         socket.on('error', () => {
             resolve(false);
         });
@@ -189,23 +184,24 @@ function checkServerConnection(server) {
 }
 let currentLeng = true;
 
-const hasChange = {isNewCheck: true,
-    messageToprint : "hay nuevos servidores"
-    };
+const hasChange = {
+    isNewCheck: true,
+    messageToprint: "hay nuevos servidores"
+};
 
 wss.on('connection', (ws) => {
     ws.on('message', (message) => {
         console.log('received: %s', message);
     });
-    //ws.send(new Date())
     // Verificar la conexión con los servidores cada segundo
     setInterval(async () => {
         for (let server of servers) {
             server.active = await checkServerConnection(server);
         }
-        const toSend = currentLeng?JSON.stringify(servers):JSON.stringify(hasChange);
+        const toSend = currentLeng ? JSON.stringify(servers) : JSON.stringify(hasChange);
         ws.send(toSend);
         currentLeng = true;
+        websocketSend = ws;
     }, 1000);
 });
 
