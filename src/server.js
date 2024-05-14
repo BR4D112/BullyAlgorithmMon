@@ -56,14 +56,16 @@ function updateServerDifferences() {
 
 function createServer(id) {
     lastPort += 1; // Incrementar el puerto
-    const ip = '192.168.128.4'; // IP inicial
+    const ip = '10.4.75.24'; // IP inicial
     const newServer = { ip: ip, id: id, port: lastPort, active: false, leadStatus: false };
     servers.push(newServer);
 
     const scriptPath = path.join(__dirname, 'serverCreator.sh');
 
-    // Ejecutar el script con ip y port como parámetros
-    exec(`${scriptPath} ${lastPort} ${id}`, (error, stdout, stderr) => {
+    const knownPorts = servers.map(server => server.port).join(','); //listar los puertos hasta ahora conocidos
+
+    // Ejecutar el script con ip, port y lista de puertos como parámetros
+    exec(`${scriptPath} ${lastPort} ${id} ${knownPorts}`, (error, stdout, stderr) => {
         if (error) {
             console.error(`Error al ejecutar el script: ${error}`);
             return;
