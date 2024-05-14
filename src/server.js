@@ -148,6 +148,13 @@ app.post('/leadStatus', (req, res) => {
     const portNumber = parseInt(port, 10);
     console.log(portNumber);
 
+    // If a new leader is being assigned, ensure there is only one leader
+    if (leadStatus) {
+        servers.forEach(server => {
+            server.leadStatus = false;
+        });
+    }
+
     // Find the server with the specified port
     const server = servers.find(server => server.port === portNumber);
     console.log(servers);
