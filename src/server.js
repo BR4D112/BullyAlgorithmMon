@@ -203,9 +203,9 @@ function sendLog(messageIn){
     })
 }
 
-function checkServerConnection(server) {
+function checkServerConnection(server) { // se obtiene la información del servidor
     return new Promise((resolve) => {
-        const socket = net.createConnection(server.port, server.ip, () => {
+        const socket = net.createConnection(server.port, server.ip, () => { // si la conexion se establece con exito bien
             resolve(true);
             socket.end();
         });
@@ -229,7 +229,7 @@ wss.on('connection', (ws) => {
         }
 
         ws.send(JSON.stringify(servers));
-    }, 1000);
+    }, 1000); // tiempo de checkeo de servidores (1 segundo)
 });
 
 server.listen(process.env.PORT || 8999, () => {
