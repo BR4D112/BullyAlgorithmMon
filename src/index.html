@@ -90,7 +90,7 @@
             try {
                 const servers = JSON.parse(event.data);
                 if (servers.hasOwnProperty('isNewCheck')) {
-                    addTextToConsolePane(servers["messageToprint"]);
+                    addTextToConsolePane(`[${getFormattedDate()}]`+servers["messageToprint"]);
                 }
                 else updateTable(servers);
             } catch (error) {
@@ -145,7 +145,7 @@
                         })
                             .then(response => response.json())
                             .then(data => {
-                                console.log('Server stopped:', data);
+                                console.log(`[${getFormattedDate()}] Server stopped:`, data);
                             });
                     });
                     actionCell.appendChild(stopButton);
