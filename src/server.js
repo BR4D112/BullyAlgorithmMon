@@ -74,7 +74,7 @@ function createServer(id) {
     });
     console.log(servers);
     currentLeng = false;
-    hasChange["messageToprint"] = "Creamos un servidor";
+    hasChange["messageToprint"] = `servidor crado con ip: ${ip} y puerto: ${lastPort}`;
     return newServer;
 }
 
