@@ -120,6 +120,8 @@ app.post('/stopServer', (req, res) => {
         console.log(`Container stopped: ${stdout}`);
         res.json({ message: 'Server stopped successfully' });
     });
+    currentLeng = false;
+    hasChange["messageToprint"] = `servidor eliminado con ip: ${ip} y puerto: ${port}`;
 });
 
 app.post('/timeReq', (req, res) => {
@@ -183,7 +185,10 @@ app.post('/leadStatus', (req, res) => {
         // Update the leadStatus of the server
         server.leadStatus = leadStatus;
         res.json({ message: 'Lead status updated successfully' });
+        currentLeng = false;
+        hasChange["messageToprint"] = `lider cambiado`;
     }
+    
 });
 
 function getFormattedDate() {
