@@ -21,7 +21,7 @@ let lastPort = 5123; // Puerto inicial crear server
 let websocketSend;
 
 const servers = [
-    //{ ip: '192.168.128.4', port: 5001, active: false, difference: 0 },
+    { ip: '192.168.128.3', id: 123, port: 8000, active: true, leadStatus: false }
     //{ ip: '192.168.128.4', port: 5002, active: false, difference: 0 },
 ];
 
@@ -54,6 +54,7 @@ function updateServerDifferences() {
 }
 
 function createServer(id) {
+    return new Promise((resolve, reject) => {
     lastPort += 1; // Incrementar el puerto
     const ip = '192.168.128.3'; // IP inicial
     const newServer = { ip: ip, id: id, port: lastPort, active: false, leadStatus: false };
@@ -76,7 +77,9 @@ function createServer(id) {
     console.log(servers);
     currentLeng = false;
     hasChange["messageToprint"] = `servidor creado con ip: ${ip} y puerto: ${lastPort}`;
-    return newServer;
+    //return newServer;
+    resolve(newServer);
+    });
 }
 
 function logServerNumbers() {
@@ -160,6 +163,103 @@ app.post('/timeReq', (req, res) => {
     res.sendStatus(200);
 });
 
+let queue = [];
+
+app.post('/addRequest', (req, res) => {
+    const { email, count, scraping } = req.body;
+
+    if (!email || !count || !scraping) {
+        res.status(400).json({ message: 'Missing required fields' });
+        return;
+    }
+
+    const newRequest = {
+        email: email,
+        count: count,
+        scraping: scraping,
+        active: false,
+        difference: 0
+    };
+
+    queue.push(newRequest);
+    res.status(200).json(newRequest);
+});
+
+let previousState = {
+    servers: JSON.stringify(servers),
+    queue: JSON.stringify(queue)
+};
+
+setInterval(() => {
+    const currentState = {
+        servers: JSON.stringify(servers),
+        queue: JSON.stringify(queue)
+    };
+
+    if (currentState.servers !== previousState.servers || currentState.queue !== previousState.queue) {
+        console.log('Servers:');
+        servers.forEach((server, index) => {
+            console.log(`Server ${index + 1}:`);
+            console.log(`IP: ${server.ip}`);
+            console.log(`Port: ${server.port}`);
+            console.log(`Active: ${server.active}`);
+        });
+
+        console.log(`Total servers: ${servers.length}`);
+
+        console.log('Queue:');
+        queue.forEach((request, index) => {
+            console.log(`Request ${index + 1}:`);
+            console.log(`Email: ${request.email}`);
+            console.log(`Count: ${request.count}`);
+            console.log(`Scraping: ${request.scraping}`);
+            console.log(`Active: ${request.active}`);
+        });
+
+        console.log(`Total requests in queue: ${queue.length}`);
+
+        previousState = currentState;
+    }
+
+    servers.forEach(server => {
+        if (server.active && queue.length > 0) {
+            const request = queue.shift();
+            const requestData = {
+                email: request.email,
+                count: request.count,
+                scraping: request.scraping
+            };
+            server.active = false;
+            axios.post(`http://${server.ip}:${server.port}/scrape`, requestData)
+                .then(response => {
+                    if (response.data.status === 'success') {
+                        server.active = true;
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+        }
+    });
+
+    if (queue.length >= 6 && !servers.some(server => server.active)) {
+        createServer('default-id').then(newServer => {
+            servers.push(newServer);
+            const request = queue.shift();
+            newServer.active = true;
+            axios.post(`http://${newServer.ip}:${newServer.port}/scrape`, request)
+                .then(response => {
+                    if (response.data.status === 'success') {
+                        newServer.active = true;
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+        });
+    }
+}, 1000);
+
 app.post('/leadStatus', (req, res) => {
     const { port, leadStatus } = req.body;
     console.log('cambiando el estado a lider');
@@ -219,6 +319,8 @@ const hasChange = {
     messageToprint: "hay nuevos servidores"
 };
 
+
+/*
 wss.on('connection', (ws) => {
     ws.on('message', (message) => {
         console.log('received: %s', message);
@@ -234,7 +336,7 @@ wss.on('connection', (ws) => {
         websocketSend = ws;
     }, 1000); // se verifica si los servidores estan ON cada  1 segundo
 });
-
+*/
 server.listen(process.env.PORT || 8999, () => {
     const message = `Good Server started on port ${server.address().port}`;
     console.log(message);
