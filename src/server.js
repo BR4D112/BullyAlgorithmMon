@@ -55,13 +55,14 @@ function updateServerDifferences() {
 
 function createServer(id) {
     lastPort += 1; // Incrementar el puerto
-    const ip = '10.4.75.24'; // IP inicial
+    const ip = '192.168.128.3'; // IP inicial
     const newServer = { ip: ip, id: id, port: lastPort, active: false, leadStatus: false };
     servers.push(newServer);
 
     const scriptPath = path.join(__dirname, 'serverCreator.sh');
 
-    const knownPorts = servers.map(server => server.port).join(','); //listar los puertos hasta ahora conocidos
+    //const knownPorts = servers.map(server => server.port).join(','); //listar los puertos hasta ahora conocidos
+    const knownPorts = servers.map(server => server.port).join(', ');
 
     // Ejecutar el script con ip, port y lista de puertos como parámetros
     exec(`${scriptPath} ${lastPort} ${id} ${knownPorts}`, (error, stdout, stderr) => {
@@ -74,7 +75,7 @@ function createServer(id) {
     });
     console.log(servers);
     currentLeng = false;
-    hasChange["messageToprint"] = `servidor crado con ip: ${ip} y puerto: ${lastPort}`;
+    hasChange["messageToprint"] = `servidor creado con ip: ${ip} y puerto: ${lastPort}`;
     return newServer;
 }
 
@@ -120,8 +121,6 @@ app.post('/stopServer', (req, res) => {
         console.log(`Container stopped: ${stdout}`);
         res.json({ message: 'Server stopped successfully' });
     });
-    currentLeng = false;
-    hasChange["messageToprint"] = `servidor eliminado con ip: ${ip} y puerto: ${port}`;
 });
 
 app.post('/timeReq', (req, res) => {
@@ -185,10 +184,7 @@ app.post('/leadStatus', (req, res) => {
         // Update the leadStatus of the server
         server.leadStatus = leadStatus;
         res.json({ message: 'Lead status updated successfully' });
-        currentLeng = false;
-        hasChange["messageToprint"] = `lider cambiado`;
     }
-    
 });
 
 function getFormattedDate() {
@@ -205,9 +201,9 @@ function sendLog(messageIn) {
     })
 }
 
-function checkServerConnection(server) {
+function checkServerConnection(server) { // se obtiene la info del servidor 
     return new Promise((resolve) => {
-        const socket = net.createConnection(server.port, server.ip, () => {
+        const socket = net.createConnection(server.port, server.ip, () => { // se intenta una conexion con ese servidor
             resolve(true);
             socket.end();
         });
@@ -230,13 +226,13 @@ wss.on('connection', (ws) => {
     // Verificar la conexión con los servidores cada segundo
     setInterval(async () => {
         for (let server of servers) {
-            server.active = await checkServerConnection(server);
+            server.active = await checkServerConnection(server); // se cambia el atributo de active si acepta o rechaza la conexion
         }
         const toSend = currentLeng ? JSON.stringify(servers) : JSON.stringify(hasChange);
         ws.send(toSend);
         currentLeng = true;
         websocketSend = ws;
-    }, 1000);
+    }, 1000); // se verifica si los servidores estan ON cada  1 segundo
 });
 
 server.listen(process.env.PORT || 8999, () => {
