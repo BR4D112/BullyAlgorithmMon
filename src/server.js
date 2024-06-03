@@ -55,30 +55,30 @@ function updateServerDifferences() {
 
 function createServer(id) {
     return new Promise((resolve, reject) => {
-    lastPort += 1; // Incrementar el puerto
-    const ip = '192.168.128.3'; // IP inicial
-    const newServer = { ip: ip, id: id, port: lastPort, active: false, leadStatus: false };
-    servers.push(newServer);
+        lastPort += 1; // Incrementar el puerto
+        const ip = '192.168.128.3'; // IP inicial
+        const newServer = { ip: ip, id: id, port: lastPort, active: false, leadStatus: false };
+        servers.push(newServer);
 
-    const scriptPath = path.join(__dirname, 'serverCreator.sh');
+        const scriptPath = path.join(__dirname, 'serverCreator.sh');
 
-    //const knownPorts = servers.map(server => server.port).join(','); //listar los puertos hasta ahora conocidos
-    const knownPorts = servers.map(server => server.port).join(', ');
+        //const knownPorts = servers.map(server => server.port).join(','); //listar los puertos hasta ahora conocidos
+        const knownPorts = servers.map(server => server.port).join(', ');
 
-    // Ejecutar el script con ip, port y lista de puertos como parámetros
-    exec(`${scriptPath} ${lastPort} ${id} ${knownPorts}`, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Error al ejecutar el script: ${error}`);
-            return;
-        }
-        console.log(`Salida del script: ${stdout}`);
-        console.error(`Errores del script: ${stderr}`);
-    });
-    console.log(servers);
-    currentLeng = false;
-    hasChange["messageToprint"] = `servidor creado con ip: ${ip} y puerto: ${lastPort}`;
-    //return newServer;
-    resolve(newServer);
+        // Ejecutar el script con ip, port y lista de puertos como parámetros
+        exec(`${scriptPath} ${lastPort} ${id} ${knownPorts}`, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error al ejecutar el script: ${error}`);
+                return;
+            }
+            console.log(`Salida del script: ${stdout}`);
+            console.error(`Errores del script: ${stderr}`);
+        });
+        console.log(servers);
+        currentLeng = false;
+        hasChange["messageToprint"] = `servidor creado con ip: ${ip} y puerto: ${lastPort}`;
+        //return newServer;
+        resolve(newServer);
     });
 }
 
@@ -176,9 +176,7 @@ app.post('/addRequest', (req, res) => {
     const newRequest = {
         email: email,
         count: count,
-        scraping: scraping,
-        active: false,
-        difference: 0
+        scraping: scraping
     };
 
     queue.push(newRequest);
@@ -230,34 +228,43 @@ setInterval(() => {
                 scraping: request.scraping
             };
             server.active = false;
-            axios.post(`http://${server.ip}:${server.port}/scrape`, requestData)
-                .then(response => {
-                    if (response.data.status === 'success') {
-                        server.active = true;
-                    }
-                })
-                .catch(error => {
-                    console.error(error);
+            checkServerConnection(server)
+                .then(isConnected => {
+                    if (isConnected) {
+                        axios.post(`http://${server.ip}:${server.port}/scrape`, requestData)
+                            .then(response => {
+                                if (response.data.status === 'success') {
+                                    server.active = true;
+                                }
+                            })
+                            .catch(error => {
+                                console.error(error);
+                            });
+                    } else {
+                        console.log(`No se pudo conectar al servidor ${server.ip}:${server.port}`);
+                    }  
                 });
-        }
-    });
-
-    if (queue.length >= 6 && !servers.some(server => server.active)) {
-        createServer('default-id').then(newServer => {
-            servers.push(newServer);
-            const request = queue.shift();
-            newServer.active = true;
-            axios.post(`http://${newServer.ip}:${newServer.port}/scrape`, request)
-                .then(response => {
-                    if (response.data.status === 'success') {
-                        newServer.active = true;
-                    }
-                })
-                .catch(error => {
-                    console.error(error);
-                });
+            }                
         });
-    }
+
+        if (queue.length >= 6 && !servers.some(server => server.active)) {
+            createServer('default-id').then(newServer => {
+                servers.push(newServer);
+                const request = queue.shift();
+                newServer.active = true;
+                setTimeout(() => {
+                    axios.post(`http://${newServer.ip}:${newServer.port}/scrape`, request)
+                        .then(response => {
+                            if (response.data.status === 'success') {
+                                newServer.active = true;
+                            }
+                        })
+                        .catch(error => {
+                            console.error(error);
+                        });
+                }, 3000); //timeout para que el servidor se active correctamente
+            });
+        }
 }, 1000);
 
 app.post('/leadStatus', (req, res) => {
@@ -320,7 +327,7 @@ const hasChange = {
 };
 
 
-/*
+
 wss.on('connection', (ws) => {
     ws.on('message', (message) => {
         console.log('received: %s', message);
@@ -336,7 +343,7 @@ wss.on('connection', (ws) => {
         websocketSend = ws;
     }, 1000); // se verifica si los servidores estan ON cada  1 segundo
 });
-*/
+
 server.listen(process.env.PORT || 8999, () => {
     const message = `Good Server started on port ${server.address().port}`;
     console.log(message);
