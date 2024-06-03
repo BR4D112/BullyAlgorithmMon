@@ -28,6 +28,7 @@
                 <input type="text" id="serverId" placeholder="Enter server ID">
                 <button id="addServer">Agregar Servidor</button>
             </div>
+            <p id="queueSize">Tamaño de la cola: 0</p>
         </div>
         <div class="column-right">
             <div class="log-console">
@@ -36,6 +37,7 @@
         </div>
     </div>
     <script>
+        
         function addTextToConsolePane(message) {
             const logConsole = document.querySelector('.log-console');
             const p = document.createElement('p');
@@ -77,22 +79,18 @@
         socket.addEventListener('message', (event) => {
             console.log('Message from server: ', event.data);
 
-            // Add the message to the log console
-            /*const logConsole = document.querySelector('.log-console');
-            const p = document.createElement('p');
-            p.classList.add('console-text');
-            p.textContent = `[${getFormattedDate()}] ${event.data}`;
-            logConsole.appendChild(p);*/
-            //addTextToConsolePane(`[${getFormattedDate()}] ${event.data}`);
-
-
+            const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+            const servers = data.servers;
+            const queueLength = data.queueLength;
             // Update the server list
             try {
-                const servers = JSON.parse(event.data);
                 if (servers.hasOwnProperty('isNewCheck')) {
                     addTextToConsolePane(`[${getFormattedDate()}]`+servers["messageToprint"]);
                 }
-                else updateTable(servers);
+                else {
+                    updateQueueSize(queueLength);
+                    updateTable(servers);
+                };
             } catch (error) {
                 addTextToConsolePane(`[${getFormattedDate()}]hubo un error: ` + error);
                 console.log(error);
@@ -102,6 +100,10 @@
             // Add each server to the list
 
         });
+        function updateQueueSize(size) {
+            document.getElementById('queueSize').textContent = `Tamaño de la cola: ${size}`;
+        }
+
         function updateTable(servers) {
             const table = document.getElementById('servers');
             for (let server of servers) {

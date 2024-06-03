@@ -302,29 +302,23 @@ function sendLog(messageIn) {
         ws.send(`received: ${messageIn}`);
     })
 }
-/*
+
 function checkServerConnection(server) { // se obtiene la info del servidor 
     return new Promise((resolve) => {
         const socket = net.createConnection(server.port, server.ip, () => { // se intenta una conexion con ese servidor
-            resolve(true);
-            socket.end();
+            if (server.active) {
+                resolve(true);
+            } else {
+                resolve(false);
+            }
+            //socket.end();
         });
         socket.on('error', () => {
             resolve(false);
         });
     });
 }
-*/
 
-function checkServerConnection(server) { // se obtiene la info del servidor 
-    return new Promise((resolve) => {
-        if (server.active) { // si el servidor está activo, resuelve inmediatamente con true
-            resolve(true);
-        } else {
-            resolve(false);
-        }
-    });
-}
 let currentLeng = true;
 
 const hasChange = {
@@ -337,17 +331,22 @@ const hasChange = {
 wss.on('connection', (ws) => {
     ws.on('message', (message) => {
         console.log('received: %s', message);
+        //queue.push(message); // Agrega el mensaje a la cola
     });
-    // Verificar la conexión con los servidores cada segundo
+
     setInterval(async () => {
         for (let server of servers) {
-            server.active = await checkServerConnection(server); // se cambia el atributo de active si acepta o rechaza la conexion
+            server.active = await checkServerConnection(server);
         }
-        const toSend = currentLeng ? JSON.stringify(servers) : JSON.stringify(hasChange);
-        ws.send(toSend);
+        const queueLength = queue.length; // Obtiene la longitud de la cola
+        const data = {
+            servers: currentLeng ? servers : hasChange,
+            queueLength: queueLength // Agrega la longitud de la cola a los datos
+        };
+        ws.send(JSON.stringify(data));
         currentLeng = true;
         websocketSend = ws;
-    }, 1000); // se verifica si los servidores estan ON cada  1 segundo
+    }, 1000);
 });
 
 server.listen(process.env.PORT || 8999, () => {
