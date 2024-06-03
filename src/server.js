@@ -228,43 +228,38 @@ setInterval(() => {
                 scraping: request.scraping
             };
             server.active = false;
-            checkServerConnection(server)
-                .then(isConnected => {
-                    if (isConnected) {
-                        axios.post(`http://${server.ip}:${server.port}/scrape`, requestData)
-                            .then(response => {
-                                if (response.data.status === 'success') {
-                                    server.active = true;
-                                }
-                            })
-                            .catch(error => {
-                                console.error(error);
-                            });
-                    } else {
-                        console.log(`No se pudo conectar al servidor ${server.ip}:${server.port}`);
-                    }  
-                });
-            }                
-        });
 
-        if (queue.length >= 6 && !servers.some(server => server.active)) {
-            createServer('default-id').then(newServer => {
-                servers.push(newServer);
-                const request = queue.shift();
-                newServer.active = true;
-                setTimeout(() => {
-                    axios.post(`http://${newServer.ip}:${newServer.port}/scrape`, request)
-                        .then(response => {
-                            if (response.data.status === 'success') {
-                                newServer.active = true;
-                            }
-                        })
-                        .catch(error => {
-                            console.error(error);
-                        });
-                }, 3000); //timeout para que el servidor se active correctamente
-            });
+            axios.post(`http://${server.ip}:${server.port}/scrape`, requestData)
+                .then(response => {
+                    if (response.data.status === 'success') {
+                        server.active = true;
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+
         }
+    });
+
+    if (queue.length >= 6 && !servers.some(server => server.active)) {
+        createServer('default-id').then(newServer => {
+            servers.push(newServer);
+            const request = queue.shift();
+            newServer.active = true;
+            setTimeout(() => {
+                axios.post(`http://${newServer.ip}:${newServer.port}/scrape`, request)
+                    .then(response => {
+                        if (response.data.status === 'success') {
+                            newServer.active = true;
+                        }
+                    })
+                    .catch(error => {
+                        console.error(error);
+                    });
+            }, 3000); //timeout para que el servidor se active correctamente
+        });
+    }
 }, 1000);
 
 app.post('/leadStatus', (req, res) => {
@@ -307,7 +302,7 @@ function sendLog(messageIn) {
         ws.send(`received: ${messageIn}`);
     })
 }
-
+/*
 function checkServerConnection(server) { // se obtiene la info del servidor 
     return new Promise((resolve) => {
         const socket = net.createConnection(server.port, server.ip, () => { // se intenta una conexion con ese servidor
@@ -317,6 +312,17 @@ function checkServerConnection(server) { // se obtiene la info del servidor
         socket.on('error', () => {
             resolve(false);
         });
+    });
+}
+*/
+
+function checkServerConnection(server) { // se obtiene la info del servidor 
+    return new Promise((resolve) => {
+        if (server.active) { // si el servidor está activo, resuelve inmediatamente con true
+            resolve(true);
+        } else {
+            resolve(false);
+        }
     });
 }
 let currentLeng = true;
